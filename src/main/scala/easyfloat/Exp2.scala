@@ -66,7 +66,8 @@ class RawFloat_SplitIF(expWidth: Int, mantissaWidth: Int, nMSBs: Int) extends Mo
 class RawFloat_MulAddExp2
 (
   mulExpWidth: Int, mulMantissaWidth: Int,
-  addExpWidth: Int, addMantissaWidth: Int
+  addExpWidth: Int, addMantissaWidth: Int,
+  pwlConst: Seq[(BigInt, BigInt)]
 ) extends Module {
 
   val fma = Module(new RawFloat_FMA(
@@ -83,36 +84,20 @@ class RawFloat_MulAddExp2
     val out = Output(new RawFloat(fma.outEW, addMantissaWidth + 2))
   })
 
-  // TODO: do not hard code it
-  val slopes = VecInit(Seq(
-    0x3eb95c1e,
-    0x3eca22e7,
-    0x3edc6e66,
-    0x3ef061c9,
-    0x3f0311b7,
-    0x3f0eee96,
-    0x3f1bde51,
-    0x3f29f9c9
-  ).map(_.U(32.W)).reverse)
-  val intercepts = VecInit(Seq(
-    0x3f5cae0f,
-    0x3f640507,
-    0x3f6ae156,
-    0x3f711d65,
-    0x3f768dcf,
-    0x3f7b00a2,
-    0x3f7e3c91,
-    0x3f800000
-  ).map(_.U(32.W)).reverse)
+  val (slopes, intercepts) = pwlConst.unzip
+  val mulIEEEWidth = 1 + mulExpWidth - 1 + mulMantissaWidth - 1
+  val addIEEEWidth = 1 + addExpWidth - 1 + addMantissaWidth - 1
+  val fSlopes = VecInit(slopes.map(_.U(mulIEEEWidth.W)).reverse)
+  val fIntercepts = VecInit(intercepts.map(_.U(addIEEEWidth.W)).reverse)
 
-  val split = Module(new RawFloat_SplitIF(mulExpWidth, mulMantissaWidth, 3))
+  val split = Module(new RawFloat_SplitIF(mulExpWidth, mulMantissaWidth, log2Up(pwlConst.length)))
 
   split.io.in := io.in_a
   io.out := fma.io.out
   when(io.in_exp2) {
     fma.io.a := split.io.outRawFloat
-    fma.io.b.fromIEEE(slopes(split.io.outFracMSBs), mulExpWidth - 1, mulMantissaWidth - 1)
-    fma.io.c.fromIEEE(intercepts(split.io.outFracMSBs), addExpWidth - 1, addMantissaWidth - 1)
+    fma.io.b.fromIEEE(fSlopes(split.io.outFracMSBs), mulExpWidth - 1, mulMantissaWidth - 1)
+    fma.io.c.fromIEEE(fIntercepts(split.io.outFracMSBs), addExpWidth - 1, addMantissaWidth - 1)
     io.out.exp := split.io.outInt + fma.io.out.exp
     io.out.sign := false.B
     io.out.isInf := false.B
@@ -124,7 +109,7 @@ class RawFloat_MulAddExp2
   })
 }
 
-class MulAddExp2(expWidth: Int, mantissaWidth: Int) extends Module {
+class MulAddExp2(expWidth: Int, mantissaWidth: Int, pwlConst: Seq[(BigInt, BigInt)]) extends Module {
   val io = IO(new Bundle {
     val in_exp2 = Input(Bool())
     val in_a = Input(UInt((1 + expWidth + mantissaWidth).W))
@@ -135,6 +120,7 @@ class MulAddExp2(expWidth: Int, mantissaWidth: Int) extends Module {
   val raw = Module(new RawFloat_MulAddExp2(
     expWidth + 1, mantissaWidth + 1,
     expWidth + 1, mantissaWidth + 1,
+    pwlConst
   ))
   raw.io.in_exp2 := io.in_exp2
   raw.io.in_a.fromIEEE(io.in_a, expWidth, mantissaWidth)
@@ -145,7 +131,9 @@ class MulAddExp2(expWidth: Int, mantissaWidth: Int) extends Module {
 
 object MulAddExp2 {
   def main(args: Array[String]): Unit = {
-    ChiselStage.emitSystemVerilogFile(new MulAddExp2(8, 23))
+    val slopes = PyFPConst.slopes(8, 23)
+    val intercepts = PyFPConst.intercepts(8, 23)
+    ChiselStage.emitSystemVerilogFile(new MulAddExp2(8, 23, slopes.zip(intercepts)))
   }
 }
 

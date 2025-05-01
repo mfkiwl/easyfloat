@@ -1,6 +1,8 @@
 package easyfloat
 
-
+import java.io.File
+import scala.sys.process._
+import scala.util.{Failure, Success, Try}
 import chisel3._
 import chisel3.util._
 
@@ -30,4 +32,44 @@ object ShiftRightJam {
     shiftRightJam.io.shamt := shamt
     (shiftRightJam.io.out, shiftRightJam.io.sticky)
   }
+}
+
+object PyFPConst {
+
+  /*
+  projectDir: when running easyfloat in standalone mode, it's '.'
+              but when running it as a submodule in chipyard,
+              the project dir should be changed to 'generators/easyfloat'
+  */
+  private def runScript(choice: String, ew: Int, mw: Int, projectDir: String = ".", otherArgs: Seq[String]= Nil): String = {
+    val scriptPath = new File(projectDir, "fp_consts.py").getAbsolutePath
+    val command = Seq(
+      "uv", "run", "--project", projectDir, scriptPath,
+      choice, "--ew", ew.toString, "--mw", mw.toString
+    ) ++ otherArgs
+    val output: Try[String] = Try(command.!!)
+    output match {
+      case Failure(exception) =>
+        sys.error(exception.getMessage)
+      case Success(stdout) =>
+        stdout
+    }
+  }
+
+  def log2e(ew: Int, mw: Int, projectDir: String = "."): BigInt = {
+    val out = runScript("log2e", ew, mw, projectDir).strip()
+    BigInt(out, 16)
+  }
+
+  private def pwl(choice: String)(ew: Int, mw: Int, projectDir: String = ".", pieces: Int = 8): Seq[BigInt] = {
+    runScript(choice, ew, mw, projectDir, Seq("--pwl-pieces", pieces.toString)).split("\n").map(s =>
+      BigInt(s, 16)
+    )
+  }
+
+  def slopes(ew: Int, mw: Int, projectDir: String = ".", pieces: Int = 8) : Seq[BigInt] =
+    pwl("slopes")(ew, mw, projectDir, pieces)
+
+  def intercepts(ew: Int, mw: Int, projectDir: String = ".", pieces: Int = 8) : Seq[BigInt] =
+    pwl("intercepts")(ew, mw, projectDir, pieces)
 }
