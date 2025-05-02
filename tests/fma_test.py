@@ -1,6 +1,6 @@
-from backend import *
 import subprocess
 import sys
+from pyeasyfloat.backend import *
 from pyeasyfloat.float import FloatPoint
 
 TEST_FLOAT = "../berkeley-testfloat-3/build/Linux-x86_64-GCC/testfloat_gen"

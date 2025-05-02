@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from typing import Generator, Tuple
-from .fp_utils import low
+from pyeasyfloat.fp_utils import low
 import numpy as np
 
 class RoundingMode(Enum):

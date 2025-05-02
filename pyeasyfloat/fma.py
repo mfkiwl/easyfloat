@@ -1,5 +1,5 @@
-from .float import *
-from .rounding import round_raw_float
+from pyeasyfloat.float import *
+from pyeasyfloat.rounding import round_raw_float
 
 def pad_mantissa(a: RawFloatPoint, b: RawFloatPoint) -> int:
     # pad the mantissa to the same width

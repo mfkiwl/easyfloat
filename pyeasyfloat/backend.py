@@ -1,10 +1,6 @@
-import sys
-import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from abc import ABC
-import pyeasyfloat.fma
-import pyeasyfloat.exp
+from pyeasyfloat.fma import fma
+from pyeasyfloat.exp import pow2
 from pyeasyfloat.float import FloatPoint
 from pyverilator import PyVerilator
 
@@ -24,10 +20,10 @@ class PyEasyFloatBackend(BaseFPBackend):
 
     def fma(self, a: FloatPoint, b: FloatPoint, c: FloatPoint) -> FloatPoint:
         """return a * b + c in precision of c"""
-        return pyeasyfloat.fma.fma(a, b, c, c.ew, c.mw)
+        return fma(a, b, c, c.ew, c.mw)
     
     def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int) -> FloatPoint:
-        return pyeasyfloat.exp.pow2(x, targetExpWidth, targetMantissaWidth)
+        return pow2(x, targetExpWidth, targetMantissaWidth)
 
 class HwBackend(BaseFPBackend):
 

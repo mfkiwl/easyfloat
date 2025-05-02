@@ -1,4 +1,4 @@
-from .fma import *
+from pyeasyfloat.fma import *
 
 def pow2_pwl(num_pieces: int):
     """Piecewise linear approximation of 2^x for x in [-1, 0]."""
@@ -36,8 +36,8 @@ def split_float(x: RawFloatPoint, pwl_segments: int) -> tuple[int, int, RawFloat
         res.mantissa = x.mantissa
         r_shift = -1 - x.exp
         if r_shift < pwl_lookup_bits:
-            m = x.mantissa >> r_shift
-            frac_msb = m >> (m.bit_length() - pwl_lookup_bits)
+            m = x.mantissa >> (x.mantissa.bit_length() - pwl_lookup_bits)
+            frac_msb = m >> r_shift
         else:
             frac_msb = 0
         return (0, frac_msb, res)

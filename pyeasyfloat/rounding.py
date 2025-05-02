@@ -1,5 +1,5 @@
-from .float import FloatPoint, RawFloatPoint, RoundingMode
-from .fp_utils import low
+from pyeasyfloat.float import FloatPoint, RawFloatPoint, RoundingMode
+from pyeasyfloat.fp_utils import low
 
 # -> (x', carry_out)
 def round_mantissa(sign: int, x: int, xw: int, ow: int,  rm: RoundingMode=RoundingMode.RNE) -> tuple[int, bool]:

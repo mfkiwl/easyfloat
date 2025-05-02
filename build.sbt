@@ -9,5 +9,5 @@ lazy val chisel6Settings = Seq(
 
 lazy val root = (project in file("."))
   .settings(
-    name := "light-fp"
+    name := "easyfloat"
   ).settings(chisel6Settings)
