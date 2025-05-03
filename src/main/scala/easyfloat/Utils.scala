@@ -56,8 +56,8 @@ object PyFPConst {
     }
   }
 
-  def log2e(ew: Int, mw: Int, projectDir: String = "."): BigInt = {
-    val out = runScript("log2e", ew, mw, projectDir).strip()
+  def attentionScale(ew: Int, mw: Int, dk: Int, projectDir: String = "."): BigInt = {
+    val out = runScript("attentionScale", ew, mw, projectDir, Seq("--dk", dk.toString)).strip()
     BigInt(out, 16)
   }
 
