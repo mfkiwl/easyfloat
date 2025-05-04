@@ -129,11 +129,48 @@ class MulAddExp2(expWidth: Int, mantissaWidth: Int, pwlConst: Seq[(BigInt, BigIn
   io.out := Rounding.round(raw.io.out, RoundingMode.RNE, expWidth, mantissaWidth)
 }
 
+class MulAddExp2Rec(expWidth: Int, mantissaWidth: Int, pwlConst: Seq[(BigInt, BigInt)]) extends Module {
+  val io = IO(new Bundle {
+    val in_exp2 = Input(Bool())
+    val in_reciprocal = Input(Bool())
+    val in_a = Input(UInt((1 + expWidth + mantissaWidth).W))
+    val in_b = Input(UInt((1 + expWidth + mantissaWidth).W))
+    val in_c = Input(UInt((1 + expWidth + mantissaWidth).W))
+    val out = Output(UInt((1 + expWidth + mantissaWidth).W))
+    val out_reciprocal = Output(Bool())
+  })
+  val reciprocal = Module(new Reciprocal(expWidth, mantissaWidth))
+  val fma = Module(new RawFloat_MulAddExp2(
+    expWidth + 1, mantissaWidth + 1,
+    expWidth + 1, mantissaWidth + 1,
+    pwlConst
+  ))
+  reciprocal.io.in := io.in_a
+  reciprocal.io.in_valid := io.in_reciprocal
+  reciprocal.io.fma_rounded_result := io.out
+  fma.io.in_exp2 := io.in_exp2
+  when(io.in_reciprocal) {
+    fma.io.in_a := reciprocal.io.fma_rawA
+    fma.io.in_b := reciprocal.io.fma_rawB
+    fma.io.in_c := reciprocal.io.fma_rawC
+  }.otherwise({
+    fma.io.in_a.fromIEEE(io.in_a, expWidth, mantissaWidth)
+    fma.io.in_b.fromIEEE(io.in_b, expWidth, mantissaWidth)
+    fma.io.in_c.fromIEEE(io.in_c, expWidth, mantissaWidth)
+  })
+  io.out := Rounding.round(fma.io.out, RoundingMode.RNE, expWidth, mantissaWidth)
+  io.out_reciprocal := reciprocal.io.out.valid
+
+  val x = Counter(10)
+  x.inc()
+  dontTouch(x.value)
+}
+
 object MulAddExp2 {
   def main(args: Array[String]): Unit = {
     val slopes = PyFPConst.slopes(8, 23)
     val intercepts = PyFPConst.intercepts(8, 23)
-    ChiselStage.emitSystemVerilogFile(new MulAddExp2(8, 23, slopes.zip(intercepts)))
+    ChiselStage.emitSystemVerilogFile(new MulAddExp2Rec(8, 23, slopes.zip(intercepts)))
   }
 }
 
