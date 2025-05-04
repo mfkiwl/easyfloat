@@ -21,11 +21,6 @@ Important!!!
 */
 class Reciprocal(expWidth: Int, mantissaWidth: Int) extends Module {
 
-  // TODO: 4 is an empirical value to fix the round-off error
-  val nIterations = log2Up(mantissaWidth + 1) + 4
-  // 2 fma per iteration
-  val nCycles = 2 * nIterations + 1
-
   val io = IO(new Bundle {
     val in = Input(UInt((1 + expWidth + mantissaWidth).W))
     val in_valid = Input(Bool())
@@ -51,6 +46,7 @@ class Reciprocal(expWidth: Int, mantissaWidth: Int) extends Module {
   xe.exp := -xRaw.exp // 1 / x^exp = x ^ -exp
   xe.mantissa := 1.B ## 0.U(mantissaWidth.W)
 
+  val nCycles = Reciprocal.nCycles(mantissaWidth)
   val cnt = RegInit(0.U(log2Up(nCycles).W))
   val done = cnt === (nCycles - 1).U
 
@@ -110,4 +106,12 @@ class Reciprocal(expWidth: Int, mantissaWidth: Int) extends Module {
 
   io.out.valid := done
   io.out.bits := io.fma_rounded_result
+}
+
+
+object Reciprocal {
+  // TODO: 4 is an empirical value to fix the round-off error
+  def nIterations(ieeeMantissaWidth: Int) = log2Up(ieeeMantissaWidth + 1) + 4
+  // 2 fma per iteration + last fma
+  def nCycles(ieeeMantissaWidth: Int) = 2 * nIterations(ieeeMantissaWidth) + 1
 }

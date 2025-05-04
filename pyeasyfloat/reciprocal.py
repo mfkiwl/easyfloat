@@ -41,7 +41,6 @@ def reciprocal(x: FloatPoint) -> FloatPoint:
     min_iter = int(np.log2(x.mw + 1))
     # TODO: 4 is an empirical value, not a theoretical value
     iter = min_iter + 5
-    print(iter)
     for _ in range(iter):
         # 2 - r*d
         rd = fma(r, xm, two, x.ew, x.mw)
