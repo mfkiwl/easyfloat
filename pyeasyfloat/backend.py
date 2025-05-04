@@ -1,6 +1,7 @@
 from abc import ABC
 from pyeasyfloat.fma import fma
 from pyeasyfloat.exp import pow2
+from pyeasyfloat.reciprocal import reciprocal
 from pyeasyfloat.float import FloatPoint
 from pyverilator import PyVerilator
 
@@ -10,6 +11,9 @@ class BaseFPBackend(ABC):
         pass
     
     def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int) -> FloatPoint:
+        pass
+    
+    def reciprocal(self, x: FloatPoint) -> FloatPoint:
         pass
 
 
@@ -24,12 +28,18 @@ class PyEasyFloatBackend(BaseFPBackend):
     
     def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int) -> FloatPoint:
         return pow2(x, targetExpWidth, targetMantissaWidth)
+    
+    def reciprocal(self, x: FloatPoint) -> FloatPoint:
+        return reciprocal(x)
 
 class HwBackend(BaseFPBackend):
 
     def __init__(self, svTopFile: str):
         super().__init__()
         self.sim = PyVerilator.build(svTopFile)
+        self.sim.io.reset = 1
+        self.sim.clock.tick()
+        self.sim.io.reset = 0
     
 
     def fma(self, a: FloatPoint, b: FloatPoint, c: FloatPoint) -> FloatPoint:
@@ -48,3 +58,14 @@ class HwBackend(BaseFPBackend):
         ret = self.sim.io.io_out
         # self.sim.clock.tick()
         return FloatPoint.from_bits(ret, targetExpWidth, targetMantissaWidth)
+    
+    def reciprocal(self, x: FloatPoint) -> FloatPoint:
+        self.sim.io.io_in_reciprocal = 1
+        self.sim.io.io_in_a = x.to_bits()
+        while not self.sim.io.io_out_reciprocal:
+            self.sim.clock.tick()
+        ret = self.sim.io.io_out
+        self.sim.io.io_in_reciprocal = 0
+        self.sim.clock.tick()
+        return FloatPoint.from_bits(ret, x.ew, x.mw)
+            
