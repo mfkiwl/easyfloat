@@ -9,8 +9,11 @@ class BaseFPBackend(ABC):
     def fma(self, a: FloatPoint, b: FloatPoint, c: FloatPoint) -> FloatPoint:
         """return a * b + c in precision of c"""
         pass
-    
-    def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int) -> FloatPoint:
+
+    def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int,
+             pwlMulExpWidth: int, pwlMulMantissaWidth: int,
+             pwlAddExpWidth: int, pwlAddMantissaWidth: int
+             ) -> FloatPoint:
         pass
     
     def reciprocal(self, x: FloatPoint) -> FloatPoint:
@@ -26,8 +29,14 @@ class PyEasyFloatBackend(BaseFPBackend):
         """return a * b + c in precision of c"""
         return fma(a, b, c, c.ew, c.mw)
     
-    def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int) -> FloatPoint:
-        return pow2(x, targetExpWidth, targetMantissaWidth)
+    def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int,
+             pwlMulExpWidth: int, pwlMulMantissaWidth: int,
+             pwlAddExpWidth: int, pwlAddMantissaWidth: int
+             ) -> FloatPoint:
+        return pow2(x,
+                    targetExpWidth, targetMantissaWidth,
+                    pwlMulExpWidth, pwlMulMantissaWidth,
+                    pwlAddExpWidth, pwlAddMantissaWidth)
     
     def reciprocal(self, x: FloatPoint) -> FloatPoint:
         return reciprocal(x)
@@ -50,7 +59,11 @@ class HwBackend(BaseFPBackend):
         ret = self.sim.io.io_out
         return FloatPoint.from_bits(ret, c.ew, c.mw)
 
-    def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int) -> FloatPoint:
+
+    def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int,
+             pwlMulExpWidth: int, pwlMulMantissaWidth: int,
+             pwlAddExpWidth: int, pwlAddMantissaWidth: int
+             ) -> FloatPoint:
         self.sim.io.io_in_exp2 = 1
         self.sim.io.io_in_a = x.to_bits()
         self.sim.io.io_in_b = 0
