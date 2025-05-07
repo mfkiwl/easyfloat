@@ -37,7 +37,7 @@ class RawFloat_SplitIF(expWidth: Int, mantissaWidth: Int, nMSBs: Int) extends Mo
     val intBits = expWidth - 1
     // we already have 1 integer bit
     val maxShift = intBits - 1
-    val shiftedMantissa = rawIn.mantissa << exp.take(maxShift.U.getWidth)
+    val shiftedMantissa = (rawIn.mantissa << exp.take(maxShift.U.getWidth)).take(mantissaWidth + maxShift)
     val xi = shiftedMantissa.head(intBits)
     val xf = shiftedMantissa.tail(intBits)
     require(xf.getWidth == mantissaWidth - 1)
@@ -168,9 +168,9 @@ class MulAddExp2Rec(expWidth: Int, mantissaWidth: Int, pwlConst: Seq[(BigInt, Bi
 
 object MulAddExp2 {
   def main(args: Array[String]): Unit = {
-    val slopes = PyFPConst.slopes(8, 23)
-    val intercepts = PyFPConst.intercepts(8, 23)
-    ChiselStage.emitSystemVerilogFile(new MulAddExp2Rec(8, 23, slopes.zip(intercepts)))
+    val slopes = PyFPConst.slopes(5, 10)
+    val intercepts = PyFPConst.intercepts(5, 10)
+    ChiselStage.emitSystemVerilogFile(new MulAddExp2Rec(5, 10, slopes.zip(intercepts)))
   }
 }
 

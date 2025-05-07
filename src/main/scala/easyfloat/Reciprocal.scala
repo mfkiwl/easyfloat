@@ -45,6 +45,9 @@ class Reciprocal(expWidth: Int, mantissaWidth: Int) extends Module {
   // override
   xe.exp := -xRaw.exp // 1 / x^exp = x ^ -exp
   xe.mantissa := 1.B ## 0.U(mantissaWidth.W)
+  xe.isNaN := xRaw.isNaN
+  xe.isInf := xRaw.isZero
+  xe.isZero := xRaw.isInf
 
   val nCycles = Reciprocal.nCycles(mantissaWidth)
   val cnt = RegInit(0.U(log2Up(nCycles).W))

@@ -6,7 +6,7 @@ from pyeasyfloat.float import FloatPoint
 from pyverilator import PyVerilator
 
 class BaseFPBackend(ABC):
-    def fma(self, a: FloatPoint, b: FloatPoint, c: FloatPoint) -> FloatPoint:
+    def fma(self, a: FloatPoint, b: FloatPoint, c: FloatPoint, targetExpWidth: int, targetMantissaWidth: int) -> FloatPoint:
         """return a * b + c in precision of c"""
         pass
 
@@ -25,9 +25,9 @@ class PyEasyFloatBackend(BaseFPBackend):
     def __init__(self):
         super().__init__()
 
-    def fma(self, a: FloatPoint, b: FloatPoint, c: FloatPoint) -> FloatPoint:
+    def fma(self, a: FloatPoint, b: FloatPoint, c: FloatPoint, targetExpWidth: int, targetMantissaWidth: int) -> FloatPoint:
         """return a * b + c in precision of c"""
-        return fma(a, b, c, c.ew, c.mw)
+        return fma(a, b, c, targetExpWidth, targetMantissaWidth)
     
     def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int,
              pwlMulExpWidth: int, pwlMulMantissaWidth: int,
@@ -51,7 +51,7 @@ class HwBackend(BaseFPBackend):
         self.sim.io.reset = 0
     
 
-    def fma(self, a: FloatPoint, b: FloatPoint, c: FloatPoint) -> FloatPoint:
+    def fma(self, a: FloatPoint, b: FloatPoint, c: FloatPoint, targetExpWidth: int, targetMantissaWidth: int) -> FloatPoint:
         self.sim.io.io_in_exp2 = 0
         self.sim.io.io_in_a = a.to_bits()
         self.sim.io.io_in_b = b.to_bits()

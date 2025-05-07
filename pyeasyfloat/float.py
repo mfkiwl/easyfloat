@@ -70,7 +70,7 @@ class FloatPoint(RawFloatPoint):
         raw.mantissa = (1 << self.mw) | self.mantissa
         raw.is_inf = self.is_inf
         raw.is_nan = self.is_nan
-        raw.is_zero = self.is_zero
+        raw.is_zero = self.is_zero | self.is_subnormal
         return raw
     
     @classmethod
