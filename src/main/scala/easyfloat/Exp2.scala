@@ -67,7 +67,7 @@ class RawFloat_MulAddExp2
 (
   mulExpWidth: Int, mulMantissaWidth: Int,
   addExpWidth: Int, addMantissaWidth: Int,
-  pwlConst: Seq[(BigInt, BigInt)]
+  pwlConst: Either[Seq[(BigInt, BigInt)], Int]
 ) extends Module {
 
   val fma = Module(new RawFloat_FMA(
@@ -82,31 +82,46 @@ class RawFloat_MulAddExp2
     val in_b = Input(new RawFloat(mulExpWidth, mulMantissaWidth))
     val in_c = Input(new RawFloat(addExpWidth, addMantissaWidth))
     val out = Output(new RawFloat(fma.outEW, addMantissaWidth + 2))
+    val exp2_frac_msb = Output(UInt(pwlConst match {
+      case Left(seq) => log2Up(seq.length).W
+      case Right(n) => log2Up(n).W
+    }))
   })
 
-  val (slopes, intercepts) = pwlConst.unzip
-  val mulIEEEWidth = 1 + mulExpWidth - 1 + mulMantissaWidth - 1
-  val addIEEEWidth = 1 + addExpWidth - 1 + addMantissaWidth - 1
-  val fSlopes = VecInit(slopes.map(_.U(mulIEEEWidth.W)).reverse)
-  val fIntercepts = VecInit(intercepts.map(_.U(addIEEEWidth.W)).reverse)
-
-  val split = Module(new RawFloat_SplitIF(mulExpWidth, mulMantissaWidth, log2Up(pwlConst.length)))
+  val split = pwlConst match {
+    case Left(seq) =>
+      Module(new RawFloat_SplitIF(mulExpWidth, mulMantissaWidth, log2Up(seq.length)))
+    case Right(n) =>
+      Module(new RawFloat_SplitIF(mulExpWidth, mulMantissaWidth, log2Up(n)))
+  }
 
   split.io.in := io.in_a
+  fma.io.a := io.in_a
+  fma.io.b := io.in_b
+  fma.io.c := io.in_c
   io.out := fma.io.out
+  io.exp2_frac_msb := split.io.outFracMSBs
   when(io.in_exp2) {
     fma.io.a := split.io.outRawFloat
-    fma.io.b.fromIEEE(fSlopes(split.io.outFracMSBs), mulExpWidth - 1, mulMantissaWidth - 1)
-    fma.io.c.fromIEEE(fIntercepts(split.io.outFracMSBs), addExpWidth - 1, addMantissaWidth - 1)
-    io.out.exp := split.io.outInt + fma.io.out.exp
     io.out.sign := false.B
     io.out.isInf := false.B
     io.out.isZero := fma.io.out.isInf
-  }.otherwise({
-    fma.io.a := io.in_a
-    fma.io.b := io.in_b
-    fma.io.c := io.in_c
-  })
+    io.out.exp := split.io.outInt + fma.io.out.exp
+  }
+  pwlConst match {
+    case Left(seq) =>
+      val (slopes, intercepts) = seq.unzip
+      val mulIEEEWidth = 1 + mulExpWidth - 1 + mulMantissaWidth - 1
+      val addIEEEWidth = 1 + addExpWidth - 1 + addMantissaWidth - 1
+      val fSlopes = VecInit(slopes.map(_.U(mulIEEEWidth.W)).reverse)
+      val fIntercepts = VecInit(intercepts.map(_.U(addIEEEWidth.W)).reverse)
+      when(io.in_exp2) {
+        fma.io.b.fromIEEE(fSlopes(split.io.outFracMSBs), mulExpWidth - 1, mulMantissaWidth - 1)
+        fma.io.c.fromIEEE(fIntercepts(split.io.outFracMSBs), addExpWidth - 1, addMantissaWidth - 1)
+      }
+    case Right(n) =>
+      // slopes and intercepts are provided outside
+  }
 }
 
 class MulAddExp2(expWidth: Int, mantissaWidth: Int, pwlConst: Seq[(BigInt, BigInt)]) extends Module {
@@ -120,7 +135,7 @@ class MulAddExp2(expWidth: Int, mantissaWidth: Int, pwlConst: Seq[(BigInt, BigIn
   val raw = Module(new RawFloat_MulAddExp2(
     expWidth + 1, mantissaWidth + 1,
     expWidth + 1, mantissaWidth + 1,
-    pwlConst
+    Left(pwlConst)
   ))
   raw.io.in_exp2 := io.in_exp2
   raw.io.in_a.fromIEEE(io.in_a, expWidth, mantissaWidth)
@@ -143,7 +158,7 @@ class MulAddExp2Rec(expWidth: Int, mantissaWidth: Int, pwlConst: Seq[(BigInt, Bi
   val fma = Module(new RawFloat_MulAddExp2(
     expWidth + 1, mantissaWidth + 1,
     expWidth + 1, mantissaWidth + 1,
-    pwlConst
+    Left(pwlConst)
   ))
   reciprocal.io.in := io.in_a
   reciprocal.io.in_valid := io.in_reciprocal
@@ -160,10 +175,6 @@ class MulAddExp2Rec(expWidth: Int, mantissaWidth: Int, pwlConst: Seq[(BigInt, Bi
   })
   io.out := Rounding.round(fma.io.out, RoundingMode.RNE, expWidth, mantissaWidth)
   io.out_reciprocal := reciprocal.io.out.valid
-
-  val x = Counter(10)
-  x.inc()
-  dontTouch(x.value)
 }
 
 object MulAddExp2 {
