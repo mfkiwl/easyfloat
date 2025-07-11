@@ -38,7 +38,7 @@ class FloatPoint(RawFloatPoint):
     def __init__(self, ew: int, mw: int):
         self.ew = ew
         self.mw = mw
-    
+
     @property
     def bias(self) -> int:
         return (1 << (self.ew - 1)) - 1
@@ -54,15 +54,15 @@ class FloatPoint(RawFloatPoint):
     @property
     def is_inf(self) -> bool:
         return self.exp == self.max_exp and self.mantissa == 0
-   
-    @property 
+
+    @property
     def is_subnormal(self) -> bool:
         return self.exp == 0 and self.mantissa != 0
 
     @property
     def is_zero(self) -> bool:
         return self.exp == 0 and self.mantissa == 0
-    
+
     def to_raw(self) -> RawFloatPoint:
         raw = RawFloatPoint()
         raw.sign = self.sign
@@ -72,7 +72,7 @@ class FloatPoint(RawFloatPoint):
         raw.is_nan = self.is_nan
         raw.is_zero = self.is_zero | self.is_subnormal
         return raw
-    
+
     @classmethod
     def from_bits(cls, x: int, ew: int, mw: int) -> "FloatPoint":
         x = int(x)
@@ -85,15 +85,44 @@ class FloatPoint(RawFloatPoint):
         x >>= 1
         assert x == 0
         return ret
-    
+
+    @classmethod
+    def from_numpy(cls, x: np.float16 | np.float32 | np.float64) -> "FloatPoint":
+        """Convert from numpy float."""
+        match x.dtype:
+            case np.float16:
+                return cls.from_bits(int(x.view(np.uint16)), 5, 10)
+            case np.float32:
+                return cls.from_bits(int(x.view(np.uint32)), 8, 23)
+            case np.float64:
+                return cls.from_bits(int(x.view(np.uint64)), 11, 52)
+            case _:
+                raise ValueError("Unsupported float point format")
+
     def to_bits(self) -> int:
         packed = (self.sign << (self.ew + self.mw)) | (self.exp << self.mw) | self.mantissa
         return packed
 
-    def get_all_normal_numbers(ew: int, mw: int) -> Generator["FloatPoint", None, None]:
+    def to_numpy(self) -> np.float64 | np.float32 | np.float16:
+        """Convert to numpy float."""
+        match (self.ew, self.mw):
+            case (11, 52):
+                return np.uint64(self.to_bits()).view(np.float64)
+            case (8, 23):
+                return np.uint32(self.to_bits()).view(np.float32)
+            case (5, 10):
+                return np.uint16(self.to_bits()).view(np.float16)
+            case _:
+                raise ValueError("Unsupported float point format")
+
+    def get_all_normal_numbers(ew: int, mw: int, postive: bool=True, negative: bool=True) -> Generator["FloatPoint", None, None]:
         exp_range = range(1, (1 << ew) - 1)  # 1 to (2^ew - 2), inclusive
         mantissa_range = range(0, (1 << mw)) # 0 to (2^mw - 1), inclusive
-        sign_range = [True, False]  # True = negative, False = positive
+        sign_range = []
+        if postive:
+            sign_range.append(False)
+        if negative:
+            sign_range.append(True)
         for sign in sign_range:
             for exp in exp_range:
                 for mantissa in mantissa_range:
@@ -102,31 +131,10 @@ class FloatPoint(RawFloatPoint):
                     fp.exp = exp
                     fp.mantissa = mantissa
                     yield fp
-    
+
     def random_normal(ew: int, mw: int) -> "FloatPoint":
         fp = FloatPoint(ew, mw)
         fp.sign = np.random.randint(0, 2) == 1
         fp.exp = np.random.randint(1, (1 << ew) - 1)
         fp.mantissa = np.random.randint(0, (1 << mw))
         return fp
-        
-
-def to_numpy_fp(x: FloatPoint):
-    # convert to numpy float
-    match (x.ew, x.mw):
-        case (8, 23):
-            return np.uint32(x.to_bits()).view(np.float32)
-        case _:
-            raise ValueError("Unsupported float point format")
-    return np.uint32(x.to_bits()).view(np.float32)
-
-
-def from_numpy_fp(x: np.float16 | np.float32) -> FloatPoint:
-    # convert from numpy float
-    match x.dtype:
-        case np.float16:
-            return FloatPoint.from_bits(int(x.view(np.uint16)), 5, 10)
-        case np.float32:
-            return FloatPoint.from_bits(int(x.view(np.uint32)), 8, 23)
-        case _:
-            raise ValueError("Unsupported float point format")

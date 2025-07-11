@@ -12,7 +12,8 @@ class BaseFPBackend(ABC):
 
     def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int,
              pwlMulExpWidth: int, pwlMulMantissaWidth: int,
-             pwlAddExpWidth: int, pwlAddMantissaWidth: int
+             pwlAddExpWidth: int, pwlAddMantissaWidth: int,
+             pwlPieces: int = 8,  # Number of pieces for piecewise linear approximation
              ) -> FloatPoint:
         pass
     
@@ -31,12 +32,13 @@ class PyEasyFloatBackend(BaseFPBackend):
     
     def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int,
              pwlMulExpWidth: int, pwlMulMantissaWidth: int,
-             pwlAddExpWidth: int, pwlAddMantissaWidth: int
+             pwlAddExpWidth: int, pwlAddMantissaWidth: int,
+             pwlPieces: int = 8
              ) -> FloatPoint:
         return pow2(x,
                     targetExpWidth, targetMantissaWidth,
                     pwlMulExpWidth, pwlMulMantissaWidth,
-                    pwlAddExpWidth, pwlAddMantissaWidth)
+                    pwlAddExpWidth, pwlAddMantissaWidth, pwl_pieces=pwlPieces)
     
     def reciprocal(self, x: FloatPoint) -> FloatPoint:
         return reciprocal(x)
@@ -62,7 +64,8 @@ class HwBackend(BaseFPBackend):
 
     def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int,
              pwlMulExpWidth: int, pwlMulMantissaWidth: int,
-             pwlAddExpWidth: int, pwlAddMantissaWidth: int
+             pwlAddExpWidth: int, pwlAddMantissaWidth: int,
+             pwlPieces: int = 8
              ) -> FloatPoint:
         self.sim.io.io_in_exp2 = 1
         self.sim.io.io_in_a = x.to_bits()

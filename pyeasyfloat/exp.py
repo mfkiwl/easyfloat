@@ -69,12 +69,17 @@ def pow2(
     target_ew: int, target_mw: int,
     pwl_mul_ew: int, pwl_mul_mw: int,
     pwl_add_ew: int, pwl_add_mw: int,
-    rm: RoundingMode=RoundingMode.RNE
+    rm: RoundingMode=RoundingMode.RNE,
+    pwl_pieces: int=N_PIECES
 ) -> FloatPoint:
     """Power of 2 for negative floating point numbers."""
-    xi, frac_msb, xf = split_float(x.to_raw(), N_PIECES)
+    xi, frac_msb, xf = split_float(x.to_raw(), pwl_pieces)
     assert xf.exp < 0 or (xf.is_nan or xf.is_inf or xf.is_zero)
-    slope, intercept = SLOPES[N_PIECES - 1 - frac_msb], INTERCEPTS[N_PIECES - 1 - frac_msb]
+    if pwl_pieces == N_PIECES:
+        slopes, intercepts = SLOPES, INTERCEPTS
+    else:
+        slopes, intercepts = pow2_pwl(num_pieces=pwl_pieces)
+    slope, intercept = slopes[pwl_pieces - 1 - frac_msb], intercepts[pwl_pieces - 1 - frac_msb]
     slope = round_raw_float(FloatPoint.from_bits(slope.view(np.uint64), 11, 52).to_raw(), pwl_mul_ew, pwl_mul_mw)
     intercept = round_raw_float(FloatPoint.from_bits(intercept.view(np.uint64), 11, 52).to_raw(), pwl_add_ew, pwl_add_mw)
     mul = mul_unrounded(xf, slope.to_raw())
