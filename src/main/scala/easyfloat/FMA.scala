@@ -29,9 +29,6 @@ class RawFloat_FMA(
   /* Initial placement of C and A * B
      c:  1.??????gs
      a*b:          ??.??????????
-
-     000000000000000000000000000100000111001010100000100011111001100100000000001
-     1111111111111111111111110000000000000000000000000000000000000000000000000000
     */
   val prodPadBits = (cMW + 1) - (aMW + bMW - 2)
   val prodMantissa = if (prodPadBits > 0) {
