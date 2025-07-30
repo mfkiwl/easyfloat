@@ -1,6 +1,6 @@
 [project]
 name = "pyeasyfloat"
-version = "0.1.4"
+version = "0.1.6"
 description = "Python refernce implementation for easyfloat."
 readme = "README.md"
 requires-python = ">=3.13"

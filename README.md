@@ -10,6 +10,7 @@ We **flush all subnormals to zero** and make life easier.
   Uses piecewise-linear interpolation and reuses the FMA unit.
 - **Reciprocal**  
   Based on Newton-Raphson iterations, also reusing the FMA unit.
+- **Division**
 
 ---
 

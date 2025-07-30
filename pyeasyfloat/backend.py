@@ -2,6 +2,7 @@ from abc import ABC
 from pyeasyfloat.fma import fma
 from pyeasyfloat.exp import pow2
 from pyeasyfloat.reciprocal import reciprocal
+from pyeasyfloat.div import div
 from pyeasyfloat.float import FloatPoint
 from pyverilator import PyVerilator
 
@@ -16,8 +17,11 @@ class BaseFPBackend(ABC):
              pwlPieces: int = 8,  # Number of pieces for piecewise linear approximation
              ) -> FloatPoint:
         pass
-    
+
     def reciprocal(self, x: FloatPoint) -> FloatPoint:
+        pass
+
+    def div(self, x: FloatPoint, y: FloatPoint) -> FloatPoint:
         pass
 
 
@@ -29,7 +33,7 @@ class PyEasyFloatBackend(BaseFPBackend):
     def fma(self, a: FloatPoint, b: FloatPoint, c: FloatPoint, targetExpWidth: int, targetMantissaWidth: int) -> FloatPoint:
         """return a * b + c in precision of c"""
         return fma(a, b, c, targetExpWidth, targetMantissaWidth)
-    
+
     def exp2(self, x: FloatPoint, targetExpWidth: int, targetMantissaWidth: int,
              pwlMulExpWidth: int, pwlMulMantissaWidth: int,
              pwlAddExpWidth: int, pwlAddMantissaWidth: int,
@@ -39,9 +43,12 @@ class PyEasyFloatBackend(BaseFPBackend):
                     targetExpWidth, targetMantissaWidth,
                     pwlMulExpWidth, pwlMulMantissaWidth,
                     pwlAddExpWidth, pwlAddMantissaWidth, pwl_pieces=pwlPieces)
-    
+
     def reciprocal(self, x: FloatPoint) -> FloatPoint:
         return reciprocal(x)
+
+    def div(self, x: FloatPoint, y: FloatPoint) -> FloatPoint:
+        return div(x, y)
 
 class HwBackend(BaseFPBackend):
 
@@ -51,7 +58,7 @@ class HwBackend(BaseFPBackend):
         self.sim.io.reset = 1
         self.sim.clock.tick()
         self.sim.io.reset = 0
-    
+
 
     def fma(self, a: FloatPoint, b: FloatPoint, c: FloatPoint, targetExpWidth: int, targetMantissaWidth: int) -> FloatPoint:
         self.sim.io.io_in_exp2 = 0
@@ -74,7 +81,7 @@ class HwBackend(BaseFPBackend):
         ret = self.sim.io.io_out
         # self.sim.clock.tick()
         return FloatPoint.from_bits(ret, targetExpWidth, targetMantissaWidth)
-    
+
     def reciprocal(self, x: FloatPoint) -> FloatPoint:
         self.sim.io.io_in_reciprocal = 1
         self.sim.io.io_in_a = x.to_bits()
@@ -84,4 +91,16 @@ class HwBackend(BaseFPBackend):
         self.sim.io.io_in_reciprocal = 0
         self.sim.clock.tick()
         return FloatPoint.from_bits(ret, x.ew, x.mw)
-            
+
+    def div(self, x: FloatPoint, y: FloatPoint) -> FloatPoint:
+        assert x.ew == y.ew and x.mw == y.mw, "x and y must have the same ew and mw"
+        self.sim.io.io_in_a = x.to_bits()
+        self.sim.io.io_in_b = y.to_bits()
+        self.sim.io.io_in_valid = 1
+        self.sim.clock.tick()
+        self.sim.io.io_in_valid = 0
+        while not self.sim.io.io_out_valid:
+            self.sim.clock.tick()
+        ret = self.sim.io.io_out
+        self.sim.clock.tick()
+        return FloatPoint.from_bits(ret, x.ew, x.mw)
